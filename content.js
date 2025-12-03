@@ -2,56 +2,39 @@ let active = false;
 let overlays = [];
 
 function createOverlay() {
-  // Remove any old ones first
   overlays.forEach(el => el?.remove());
   overlays = [];
 
-  // Top dim
-  const top = document.createElement('div');
-  top.style.cssText = `
+  const styles = `
     position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 40vh;
     background: black;
     opacity: 0.75;
     z-index: 9999;
     pointer-events: none;
   `;
-  // Bottom dim
-  const bottom = document.createElement('div');
-  bottom.style.cssText = `
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: 40vh;
-    background: black;
-    opacity: 0.75;
-    z-index: 9999;
-    pointer-events: none;
-  `;
-  // Left bracket line
-  const left = document.createElement('div');
-  left.style.cssText = `
-    position: fixed;
-    top: 40vh; bottom: 40vh;
-    left: 8%;
-    width: 6px;
-    background: #00ff00;
-    box-shadow: 0 0 10px #00ff00;
-    z-index: 10000;
-    pointer-events: none;
-  `;
-  // Right bracket line
-  const right = document.createElement('div');
-  right.style.cssText = `
-    position: fixed;
-    top: 40vh; bottom: 40vh;
-    right: 8%;
-    width: 6px;
-    background: #00ff00;
-    box-shadow: 0 0 10px #00ff00;
-    z-index: 10000;
-    pointer-events: none;
-  `;
+
+  const top = Object.assign(document.createElement('div'), {
+    style: styles + `top:0; left:0; right:0; height:40vh;`
+  });
+  const bottom = Object.assign(document.createElement('div'), {
+    style: styles + `bottom:0; left:0; right:0; height:40vh;`
+  });
+  const left = Object.assign(document.createElement('div'), {
+    style: `
+      position:fixed; top:40vh; bottom:40vh; left:8%;
+      width:7px; background:#00ff00;
+      box-shadow:0 0 15px #00ff00;
+      z-index:10000; pointer-events:none;
+    `
+  });
+  const right = Object.assign(document.createElement('div'), {
+    style: `
+      position:fixed; top:40vh; bottom:40vh; right:8%;
+      width:7px; background:#00ff00;
+      box-shadow:0 0 15px #00ff00;
+      z-index:10000; pointer-events:none;
+    `
+  });
 
   document.body.append(top, bottom, left, right);
   overlays = [top, bottom, left, right];
@@ -62,10 +45,13 @@ function removeOverlay() {
   overlays = [];
 }
 
+// Listen for toggle message
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.action === "toggle") {
     active = !active;
-    if (active) createOverlay();
-    else removeOverlay();
+    active ? createOverlay() : removeOverlay();
   }
 });
+
+// If the script was already injected before, make sure we start off
+if (active) createOverlay();
