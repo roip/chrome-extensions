@@ -1,16 +1,16 @@
 # Focus Reader Bracket
 
-A Chrome extension that helps users with dyslexia and ADHD focus on reading by creating an adjustable reading bracket with automatic content detection and side shading.
+A Chrome extension that helps users with dyslexia and ADHD focus on reading by creating an adjustable reading bracket with shading above and below the reading area.
 
 ## Features
 
 - **Adjustable Reading Bracket**: Create a clear horizontal reading zone on any webpage
-- **Automatic Content Detection**: Automatically detects paragraph margins and adjusts side shading
-- **Side Shading**: Block distracting content on the sides (auto-sized to content width)
-- **Green Bracket Lines**: Optional visual markers at content boundaries
+- **Top/Bottom Shading**: Block distracting content above and below your reading area
+- **Green Bracket Lines**: Optional visual markers at the left and right edges of content
 - **Draggable Controls**: Move and resize the bracket by dragging handles
 - **Keyboard Shortcuts**: Quick adjustments without breaking reading flow
-- **Settings Panel**: Toggle features and customize colors
+- **Theme Customization**: Choose your preferred bracket line and button color
+- **Close Button**: Quickly dismiss the overlay with the X button
 
 ## Installation
 
@@ -26,11 +26,11 @@ A Chrome extension that helps users with dyslexia and ADHD focus on reading by c
 
 - **Activate**: Click the extension icon in your toolbar
 - The overlay will appear with:
-  - Top and bottom shading
-  - Side shading (automatically sized to content)
-  - Green bracket lines at content edges
-  - Drag handles (top and bottom center)
-  - Settings button (top-right of clear area)
+  - Top and bottom shading (blocks content above/below reading area)
+  - Green bracket lines at left and right edges (optional, can be toggled off)
+  - Drag handles (top and bottom center, inside the gray shading)
+  - Close button (× at top-right of screen)
+  - Settings button (⚙ at top-right of screen)
 
 ### Drag Controls
 
@@ -47,41 +47,29 @@ Chrome limits extensions to 4 keyboard shortcuts. Use these for quick adjustment
 - `Alt+Shift+Up` - Make bracket taller
 - `Alt+Shift+Down` - Make bracket shorter
 
-**Note:** Additional features (toggle side shading, bracket lines, reset settings) are available via the settings panel (gear icon ⚙)
+**Note:** Additional features (toggle bracket lines, customize theme color, reset settings) are available via the settings panel (gear icon ⚙)
 
-### Settings Panel
+### Controls
 
-Click the gear icon (⚙) in the top-right of the clear area to access:
+**Close Button (×)**
+- Located at top-right of screen
+- Click to dismiss the overlay and return to normal reading
+- Alternatively, click the extension icon again to toggle off
 
-- **Side Shading Toggle**: Turn side shading on/off
-- **Bracket Lines Toggle**: Turn green bracket lines on/off
-- **Side Color Picker**: Change the color of side shading
-- **Reset Button**: Restore all default settings
-
-## How Auto-Detection Works
-
-When you activate the overlay, the extension automatically:
-
-1. Analyzes paragraph elements on the page
-2. Calculates the median left and right boundaries
-3. Adjusts side shading to match content width
-4. Falls back to 8% margins if detection fails
-
-This works best on:
-- News articles
-- Blog posts
-- Documentation pages
-- Any page with clear paragraph structure
+**Settings Panel (⚙)**
+- Click the gear icon at top-right of screen to access:
+  - **Bracket Lines Toggle**: Turn green bracket lines on/off
+  - **Theme Color Picker**: Customize the color of bracket lines and buttons
+  - **Reset Button**: Restore all default settings
 
 ## Default Settings
 
-- Top offset: 40vh
-- Bracket height: 20vh
-- Side shading: ON (auto-sized)
-- Bracket lines: ON
+- Top offset: 40vh (40% from top of screen)
+- Bracket height: 20vh (20% of screen height)
+- Bracket lines: ON (green lines at left and right edges)
 - Shading color: Black (#000000)
 - Shading opacity: 0.75
-- Bracket color: Green (#00ff00)
+- Theme color: Green (#00ff00)
 
 ## Troubleshooting
 
@@ -89,16 +77,19 @@ This works best on:
 - Make sure you clicked the extension icon
 - Check that the page has loaded completely
 - Try refreshing the page
+- Note: Extension cannot run on browser internal pages (chrome://, edge://, about:)
 
-**Auto-detect not working well:**
-- Some websites have complex layouts that are hard to detect
-- You can manually adjust using drag handles or keyboard shortcuts
-- Your adjustments are saved automatically
+**Bracket not moving:**
+- Ensure the overlay is active (click extension icon)
+- Try using keyboard shortcuts (Alt+Up/Down)
+- Drag the handles inside the gray shaded areas
 
 **Controls not visible:**
-- Hover over the top/bottom center of the clear area
-- The handles fade to 30% opacity when inactive
-- Move your mouse near them to make them visible
+- **Close button (×)**: Fixed at top-right of screen, left of settings button
+- **Settings button (⚙)**: Fixed at top-right of screen
+- **Drag handles**: Located inside the gray shading at top and bottom center
+  - Handles fade to 30% opacity when inactive
+  - Hover over them to make them fully visible
 
 ## Development
 
