@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Focus Reader Bracket",
+  "version": "2.0",
+  "description": "Adjustable reading bracket with side shading for dyslexia & ADHD",
+  "action": {
+    "default_title": "Toggle Focus Bracket"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "commands": {
+    "move-up": {
+      "suggested_key": {"default": "Alt+Up"},
+      "description": "Move bracket up"
+    },
+    "move-down": {
+      "suggested_key": {"default": "Alt+Down"},
+      "description": "Move bracket down"
+    },
+    "resize-taller": {
+      "suggested_key": {"default": "Alt+Shift+Up"},
+      "description": "Make bracket taller"
+    },
+    "resize-shorter": {
+      "suggested_key": {"default": "Alt+Shift+Down"},
+      "description": "Make bracket shorter"
+    }
+  }
+}
