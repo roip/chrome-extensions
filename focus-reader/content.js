@@ -536,7 +536,7 @@ document.addEventListener('mousemove', (e) => {
     currentSettings.topOffset = newTopOffset;
   } else if (dragMode === 'resize') {
     // Resize the bracket height - drag down increases height
-    const newHeight = Math.max(10, Math.min(60, dragStartValue + deltaVh));
+    const newHeight = Math.max(2, Math.min(60, dragStartValue + deltaVh));
     currentSettings.bracketHeight = newHeight;
   }
 
@@ -617,7 +617,7 @@ async function handleKeyboardCommand(command) {
       currentSettings = await saveSettings({ bracketHeight: Math.min(60, currentSettings.bracketHeight + 5) }, true);
       break;
     case 'resize-shorter':
-      currentSettings = await saveSettings({ bracketHeight: Math.max(10, currentSettings.bracketHeight - 5) }, true);
+      currentSettings = await saveSettings({ bracketHeight: Math.max(2, currentSettings.bracketHeight - 5) }, true);
       break;
   }
 

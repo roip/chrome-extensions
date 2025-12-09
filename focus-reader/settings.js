@@ -3,7 +3,7 @@
 const DEFAULT_SETTINGS = {
   // Position & Dimensions
   topOffset: 40,              // vh units (0-80)
-  bracketHeight: 20,          // vh units (10-60)
+  bracketHeight: 20,          // vh units (2-60)
   leftPosition: 8,            // percentage from left edge
   rightPosition: 8,           // percentage from right edge
 
@@ -63,7 +63,7 @@ async function saveSettings(updates, immediate = false) {
 
   // Validate bounds
   newSettings.topOffset = Math.max(0, Math.min(80, newSettings.topOffset));
-  newSettings.bracketHeight = Math.max(10, Math.min(60, newSettings.bracketHeight));
+  newSettings.bracketHeight = Math.max(2, Math.min(60, newSettings.bracketHeight));
   newSettings.leftPosition = Math.max(0, Math.min(40, newSettings.leftPosition));
   newSettings.rightPosition = Math.max(0, Math.min(40, newSettings.rightPosition));
   newSettings.shadingOpacity = Math.max(0, Math.min(1, newSettings.shadingOpacity));
