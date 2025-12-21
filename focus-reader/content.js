@@ -6,8 +6,9 @@ let overlays = {};  // Store overlay elements by ID for easy access
 let currentSettings = null;
 let isDragging = false;
 let dragStartY = 0;
+let dragStartX = 0;
 let dragStartValue = 0;
-let dragMode = null; // 'move' or 'resize'
+let dragMode = null; // 'move', 'resize', 'width-left', or 'width-right'
 let initializationComplete = false;  // Guard flag to prevent race conditions
 
 // Initialize on script load
@@ -113,74 +114,78 @@ async function createOverlay() {
     pointer-events: none;
   `;
 
-  // No side shading - user wants gray all around (top/bottom/left/right)
+  // Left margin shade - covers left side of page
+  const leftShade = document.createElement('div');
+  leftShade.id = 'focus-bracket-left-shade';
+  leftShade.style.cssText = `
+    position: fixed;
+    top: ${pos.clearTop};
+    height: ${currentSettings.bracketHeight}vh;
+    left: 0;
+    width: ${pos.leftPos};
+    background: ${currentSettings.shadingColor};
+    opacity: ${currentSettings.shadingOpacity};
+    z-index: 9999;
+    pointer-events: none;
+  `;
 
-  // Left bracket line (if enabled)
-  let leftLine = null;
-  if (currentSettings.bracketLinesEnabled) {
-    leftLine = document.createElement('div');
-    leftLine.id = 'focus-bracket-left-line';
-    leftLine.style.cssText = `
-      position: fixed;
-      top: ${pos.clearTop};
-      bottom: ${pos.clearBottom};
-      left: ${pos.leftPos};
-      width: ${currentSettings.bracketWidth}px;
-      background: ${currentSettings.bracketColor};
-      box-shadow: 0 0 15px ${currentSettings.bracketColor};
-      z-index: 10000;
-      pointer-events: none;
-    `;
-  }
+  // Right margin shade - covers right side of page
+  const rightShade = document.createElement('div');
+  rightShade.id = 'focus-bracket-right-shade';
+  rightShade.style.cssText = `
+    position: fixed;
+    top: ${pos.clearTop};
+    height: ${currentSettings.bracketHeight}vh;
+    right: 0;
+    width: ${pos.rightPos};
+    background: ${currentSettings.shadingColor};
+    opacity: ${currentSettings.shadingOpacity};
+    z-index: 9999;
+    pointer-events: none;
+  `;
 
-  // Right bracket line (if enabled)
-  let rightLine = null;
-  if (currentSettings.bracketLinesEnabled) {
-    rightLine = document.createElement('div');
-    rightLine.id = 'focus-bracket-right-line';
-    rightLine.style.cssText = `
-      position: fixed;
-      top: ${pos.clearTop};
-      bottom: ${pos.clearBottom};
-      right: ${pos.rightPos};
-      width: ${currentSettings.bracketWidth}px;
-      background: ${currentSettings.bracketColor};
-      box-shadow: 0 0 15px ${currentSettings.bracketColor};
-      z-index: 10000;
-      pointer-events: none;
-    `;
-  }
-
-  // Create drag handles
+  // Create drag handles (top/bottom for height, left/right for width)
   const topHandle = createDragHandle('top', pos.clearTop);
   const bottomHandle = createDragHandle('bottom', pos.clearBottom);
+  const leftHandle = createWidthHandle('left', pos);
+  const rightHandle = createWidthHandle('right', pos);
 
   // Create close button and settings button
   const closeButton = createCloseButton();
-  const settingsButton = createSettingsButton(pos);
+  const settingsButton = createSettingsButton();
 
   // Append all elements
-  document.body.append(top, bottom);
-  if (leftLine) document.body.append(leftLine);
-  if (rightLine) document.body.append(rightLine);
-  document.body.append(topHandle, bottomHandle, closeButton, settingsButton);
+  document.body.append(top, bottom, leftShade, rightShade);
+  document.body.append(topHandle, bottomHandle, leftHandle, rightHandle, closeButton, settingsButton);
 
   // Store references
   overlays = {
     container,
     top,
     bottom,
-    leftLine,
-    rightLine,
+    leftShade,
+    rightShade,
     topHandle,
     bottomHandle,
+    leftHandle,
+    rightHandle,
     closeButton,
     settingsButton
   };
 }
 
 /**
- * Create a drag handle for moving/resizing
+ * Convert hex color to rgba
+ */
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * Create a drag handle for moving/resizing (top/bottom)
  */
 function createDragHandle(position, offset) {
   const handle = document.createElement('div');
@@ -188,6 +193,7 @@ function createDragHandle(position, offset) {
   handle.className = 'focus-bracket-handle';
 
   const isTop = position === 'top';
+  const themeColor = currentSettings.bracketColor || '#888888';
   // Position handles INSIDE the gray area (above/below the clear bracket)
   handle.style.cssText = `
     position: fixed;
@@ -196,12 +202,12 @@ function createDragHandle(position, offset) {
     transform: translateX(-50%);
     width: 60px;
     height: 20px;
-    background: rgba(0, 255, 0, 0.3);
-    border: 2px solid rgba(0, 255, 0, 0.6);
+    background: ${hexToRgba(themeColor, 0.3)};
+    border: 2px solid ${hexToRgba(themeColor, 0.5)};
     border-radius: 10px;
     z-index: 10001;
     pointer-events: auto;
-    cursor: ${isTop ? 'ns-resize' : 'ns-resize'};
+    cursor: ns-resize;
     opacity: 0.3;
     transition: opacity 0.2s;
   `;
@@ -231,12 +237,64 @@ function createDragHandle(position, offset) {
 }
 
 /**
+ * Create a width drag handle (left/right sides) - thin line, hidden by default
+ */
+function createWidthHandle(side, pos) {
+  const handle = document.createElement('div');
+  handle.id = `focus-bracket-handle-${side}`;
+  handle.className = 'focus-bracket-handle';
+
+  const isLeft = side === 'left';
+  const themeColor = currentSettings.bracketColor || '#808080';
+  // Thin line positioned at the edge of the clear area
+  handle.style.cssText = `
+    position: fixed;
+    top: ${pos.clearTop};
+    height: ${currentSettings.bracketHeight}vh;
+    ${isLeft ? 'left' : 'right'}: ${isLeft ? pos.leftPos : pos.rightPos};
+    width: 3px;
+    background: ${themeColor};
+    border: none;
+    border-radius: 0;
+    z-index: 10001;
+    pointer-events: auto;
+    cursor: ew-resize;
+    opacity: 0;
+    transition: opacity 0.2s;
+  `;
+
+  // Show on hover
+  handle.addEventListener('mouseenter', () => {
+    handle.style.opacity = '0.6';
+  });
+
+  handle.addEventListener('mouseleave', () => {
+    if (!isDragging) {
+      handle.style.opacity = '0';
+    }
+  });
+
+  // Drag functionality
+  handle.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragMode = isLeft ? 'width-left' : 'width-right';
+    dragStartValue = isLeft ? currentSettings.leftPosition : currentSettings.rightPosition;
+    handle.style.opacity = '0.8';
+    e.preventDefault();
+  });
+
+  return handle;
+}
+
+/**
  * Create close button to turn off overlay
  */
 function createCloseButton() {
   const button = document.createElement('div');
   button.id = 'focus-bracket-close-btn';
   button.innerHTML = '×';
+  const themeColor = currentSettings.bracketColor || '#888888';
   button.style.cssText = `
     position: fixed;
     top: 10px;
@@ -244,7 +302,7 @@ function createCloseButton() {
     width: 30px;
     height: 30px;
     background: rgba(0, 0, 0, 0.7);
-    color: #00ff00;
+    color: ${themeColor};
     font-size: 24px;
     display: flex;
     align-items: center;
@@ -278,10 +336,11 @@ function createCloseButton() {
 /**
  * Create settings button
  */
-function createSettingsButton(pos) {
+function createSettingsButton() {
   const button = document.createElement('div');
   button.id = 'focus-bracket-settings-btn';
   button.innerHTML = '⚙';
+  const themeColor = currentSettings.bracketColor || '#888888';
   button.style.cssText = `
     position: fixed;
     top: 10px;
@@ -289,7 +348,7 @@ function createSettingsButton(pos) {
     width: 30px;
     height: 30px;
     background: rgba(0, 0, 0, 0.7);
-    color: #00ff00;
+    color: ${themeColor};
     font-size: 18px;
     display: flex;
     align-items: center;
@@ -334,6 +393,7 @@ function toggleSettingsPanel() {
  * Create settings panel
  */
 function createSettingsPanel() {
+  const themeColor = currentSettings.bracketColor || '#888888';
   const panel = document.createElement('div');
   panel.id = 'focus-bracket-settings-panel';
   panel.style.cssText = `
@@ -342,10 +402,10 @@ function createSettingsPanel() {
     right: 20px;
     width: 250px;
     background: rgba(0, 0, 0, 0.9);
-    color: #00ff00;
+    color: ${themeColor};
     padding: 20px;
     border-radius: 10px;
-    border: 2px solid #00ff00;
+    border: 2px solid ${themeColor};
     z-index: 10002;
     pointer-events: auto;
     font-family: Arial, sans-serif;
@@ -355,24 +415,18 @@ function createSettingsPanel() {
   panel.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
       <div style="font-weight: bold; font-size: 16px;">Settings</div>
-      <button id="close-settings-btn" style="background: none; border: none; color: #00ff00; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px;">×</button>
+      <button id="close-settings-btn" style="background: none; border: none; color: ${themeColor}; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px;">×</button>
     </div>
 
-    <label style="display: flex; align-items: center; margin-bottom: 10px; cursor: pointer;">
-      <input type="checkbox" id="bracket-lines-toggle" ${currentSettings.bracketLinesEnabled ? 'checked' : ''} style="margin-right: 8px;">
-      Bracket Lines
-    </label>
-
-    <div style="margin-bottom: 10px;">
+    <div style="margin-bottom: 15px;">
       <label style="display: block; margin-bottom: 5px;">Theme Color</label>
-      <input type="color" id="theme-color-picker" value="${currentSettings.bracketColor}" style="width: 100%; height: 30px; border: 1px solid #00ff00; border-radius: 5px; cursor: pointer;">
+      <input type="color" id="theme-color-picker" value="${themeColor}" style="width: 100%; height: 30px; border: 1px solid ${themeColor}; border-radius: 5px; cursor: pointer;">
     </div>
 
     <button id="reset-settings-btn" style="
       width: 100%;
       padding: 8px;
-      margin-top: 15px;
-      background: #00ff00;
+      background: ${themeColor};
       color: black;
       border: none;
       border-radius: 5px;
@@ -393,18 +447,37 @@ function createSettingsPanel() {
     panel.remove();
   });
 
-  document.getElementById('bracket-lines-toggle').addEventListener('change', async (e) => {
-    currentSettings = await saveSettings({ bracketLinesEnabled: e.target.checked }, true);
-    updateOverlay();
-  });
-
   document.getElementById('theme-color-picker').addEventListener('input', async (e) => {
-    currentSettings = await saveSettings({ bracketColor: e.target.value }, true);
-    updateOverlay();
-    // Update settings button and panel colors
-    if (overlays.settingsButton) overlays.settingsButton.style.color = e.target.value;
-    panel.style.borderColor = e.target.value;
-    panel.style.color = e.target.value;
+    const newColor = e.target.value;
+    currentSettings = await saveSettings({ bracketColor: newColor }, true);
+
+    // Update panel colors
+    panel.style.color = newColor;
+    panel.style.borderColor = newColor;
+    document.getElementById('close-settings-btn').style.color = newColor;
+    document.getElementById('reset-settings-btn').style.background = newColor;
+    e.target.style.borderColor = newColor;
+
+    // Update buttons
+    if (overlays.closeButton) overlays.closeButton.style.color = newColor;
+    if (overlays.settingsButton) overlays.settingsButton.style.color = newColor;
+
+    // Update top/bottom handles with new theme color (with transparency)
+    const handleBg = hexToRgba(newColor, 0.3);
+    const handleBorder = hexToRgba(newColor, 0.5);
+    [overlays.topHandle, overlays.bottomHandle].forEach(handle => {
+      if (handle) {
+        handle.style.background = handleBg;
+        handle.style.borderColor = handleBorder;
+      }
+    });
+
+    // Update left/right handles (thin lines, solid color)
+    [overlays.leftHandle, overlays.rightHandle].forEach(handle => {
+      if (handle) {
+        handle.style.background = newColor;
+      }
+    });
   });
 
   document.getElementById('reset-settings-btn').addEventListener('click', async () => {
@@ -435,51 +508,26 @@ function updateOverlay() {
     overlays.bottom.style.opacity = currentSettings.shadingOpacity;
   }
 
-  // No side shading - removed per user request
+  // Update left/right margin shades
+  const bracketHeightVh = `${currentSettings.bracketHeight}vh`;
 
-  // Update or create/remove bracket lines
-  if (currentSettings.bracketLinesEnabled) {
-    if (!overlays.leftLine) {
-      overlays.leftLine = document.createElement('div');
-      overlays.leftLine.id = 'focus-bracket-left-line';
-      document.body.append(overlays.leftLine);
-    }
-    overlays.leftLine.style.cssText = `
-      position: fixed;
-      top: ${pos.clearTop};
-      bottom: ${pos.clearBottom};
-      left: ${pos.leftPos};
-      width: ${currentSettings.bracketWidth}px;
-      background: ${currentSettings.bracketColor};
-      box-shadow: 0 0 15px ${currentSettings.bracketColor};
-      z-index: 10000;
-      pointer-events: none;
-    `;
-
-    if (!overlays.rightLine) {
-      overlays.rightLine = document.createElement('div');
-      overlays.rightLine.id = 'focus-bracket-right-line';
-      document.body.append(overlays.rightLine);
-    }
-    overlays.rightLine.style.cssText = `
-      position: fixed;
-      top: ${pos.clearTop};
-      bottom: ${pos.clearBottom};
-      right: ${pos.rightPos};
-      width: ${currentSettings.bracketWidth}px;
-      background: ${currentSettings.bracketColor};
-      box-shadow: 0 0 15px ${currentSettings.bracketColor};
-      z-index: 10000;
-      pointer-events: none;
-    `;
-  } else {
-    overlays.leftLine?.remove();
-    overlays.rightLine?.remove();
-    overlays.leftLine = null;
-    overlays.rightLine = null;
+  if (overlays.leftShade) {
+    overlays.leftShade.style.top = pos.clearTop;
+    overlays.leftShade.style.height = bracketHeightVh;
+    overlays.leftShade.style.width = pos.leftPos;
+    overlays.leftShade.style.background = currentSettings.shadingColor;
+    overlays.leftShade.style.opacity = currentSettings.shadingOpacity;
   }
 
-  // Update handles - position them 30px inside gray area
+  if (overlays.rightShade) {
+    overlays.rightShade.style.top = pos.clearTop;
+    overlays.rightShade.style.height = bracketHeightVh;
+    overlays.rightShade.style.width = pos.rightPos;
+    overlays.rightShade.style.background = currentSettings.shadingColor;
+    overlays.rightShade.style.opacity = currentSettings.shadingOpacity;
+  }
+
+  // Update top/bottom handles - position them 30px inside gray area
   if (overlays.topHandle) {
     overlays.topHandle.style.top = `calc(${pos.clearTop} - 30px)`;
   }
@@ -487,7 +535,17 @@ function updateOverlay() {
     overlays.bottomHandle.style.bottom = `calc(${pos.clearBottom} - 30px)`;
   }
 
-  // Settings button stays in top-right - no need to update position
+  // Update left/right width handles - thin lines at the edge
+  if (overlays.leftHandle) {
+    overlays.leftHandle.style.top = pos.clearTop;
+    overlays.leftHandle.style.height = bracketHeightVh;
+    overlays.leftHandle.style.left = pos.leftPos;
+  }
+  if (overlays.rightHandle) {
+    overlays.rightHandle.style.top = pos.clearTop;
+    overlays.rightHandle.style.height = bracketHeightVh;
+    overlays.rightHandle.style.right = pos.rightPos;
+  }
 }
 
 /**
@@ -526,18 +584,36 @@ async function runAutoDetect() {
 document.addEventListener('mousemove', (e) => {
   if (!isDragging) return;
 
-  const deltaY = e.clientY - dragStartY;
-  const viewportHeight = window.innerHeight;
-  const deltaVh = (deltaY / viewportHeight) * 100;
+  if (dragMode === 'move' || dragMode === 'resize') {
+    // Vertical dragging (top/bottom handles)
+    const deltaY = e.clientY - dragStartY;
+    const viewportHeight = window.innerHeight;
+    const deltaVh = (deltaY / viewportHeight) * 100;
 
-  if (dragMode === 'move') {
-    // Move the bracket up/down
-    const newTopOffset = Math.max(0, Math.min(80, dragStartValue + deltaVh));
-    currentSettings.topOffset = newTopOffset;
-  } else if (dragMode === 'resize') {
-    // Resize the bracket height - drag down increases height
-    const newHeight = Math.max(2, Math.min(60, dragStartValue + deltaVh));
-    currentSettings.bracketHeight = newHeight;
+    if (dragMode === 'move') {
+      // Move the bracket up/down
+      const newTopOffset = Math.max(0, Math.min(80, dragStartValue + deltaVh));
+      currentSettings.topOffset = newTopOffset;
+    } else if (dragMode === 'resize') {
+      // Resize the bracket height - drag down increases height
+      const newHeight = Math.max(2, Math.min(60, dragStartValue + deltaVh));
+      currentSettings.bracketHeight = newHeight;
+    }
+  } else if (dragMode === 'width-left' || dragMode === 'width-right') {
+    // Horizontal dragging (left/right handles)
+    const deltaX = e.clientX - dragStartX;
+    const viewportWidth = window.innerWidth;
+    const deltaPercent = (deltaX / viewportWidth) * 100;
+
+    if (dragMode === 'width-left') {
+      // Dragging left handle: drag right = increase left margin (narrower content)
+      const newLeftPos = Math.max(0, Math.min(40, dragStartValue + deltaPercent));
+      currentSettings.leftPosition = newLeftPos;
+    } else if (dragMode === 'width-right') {
+      // Dragging right handle: drag left = increase right margin (narrower content)
+      const newRightPos = Math.max(0, Math.min(40, dragStartValue - deltaPercent));
+      currentSettings.rightPosition = newRightPos;
+    }
   }
 
   updateOverlay();
@@ -551,12 +627,16 @@ document.addEventListener('mouseup', async () => {
     // Save settings after drag complete
     currentSettings = await saveSettings({
       topOffset: currentSettings.topOffset,
-      bracketHeight: currentSettings.bracketHeight
+      bracketHeight: currentSettings.bracketHeight,
+      leftPosition: currentSettings.leftPosition,
+      rightPosition: currentSettings.rightPosition
     }, true);
 
-    // Reset handle opacity
+    // Reset handle opacities (top/bottom visible, left/right hidden)
     if (overlays.topHandle) overlays.topHandle.style.opacity = '0.3';
     if (overlays.bottomHandle) overlays.bottomHandle.style.opacity = '0.3';
+    if (overlays.leftHandle) overlays.leftHandle.style.opacity = '0';
+    if (overlays.rightHandle) overlays.rightHandle.style.opacity = '0';
   }
 });
 
@@ -632,12 +712,12 @@ async function loadSettingsModule() {
     leftPosition: 8,
     rightPosition: 8,
     sideShadingEnabled: true,
-    bracketLinesEnabled: true,
+    bracketLinesEnabled: false,  // No longer using bracket lines
     shadingColor: '#000000',
     shadingOpacity: 0.75,
     sideColor: '#000000',
     sideOpacity: 0.75,
-    bracketColor: '#00ff00',
+    bracketColor: '#808080',  // 50% gray - minimal saturation for less visual distraction
     bracketWidth: 7,
     autoDetectEnabled: true,
     lastDetectedLeft: null,
@@ -679,7 +759,7 @@ async function loadSettingsModule() {
 
     // Validate bounds
     newSettings.topOffset = Math.max(0, Math.min(80, newSettings.topOffset));
-    newSettings.bracketHeight = Math.max(10, Math.min(60, newSettings.bracketHeight));
+    newSettings.bracketHeight = Math.max(2, Math.min(60, newSettings.bracketHeight));  // Min 2vh for single-line reading
     newSettings.leftPosition = Math.max(0, Math.min(40, newSettings.leftPosition));
     newSettings.rightPosition = Math.max(0, Math.min(40, newSettings.rightPosition));
 
