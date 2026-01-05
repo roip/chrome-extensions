@@ -1,4 +1,4 @@
-# Focus Reader Bracket
+# Focus Reader
 
 A Chrome extension that helps users with dyslexia and ADHD focus on reading by creating an adjustable reading bracket with shading above and below the reading area.
 
@@ -58,18 +58,43 @@ Chrome limits extensions to 4 keyboard shortcuts. Use these for quick adjustment
 
 **Settings Panel (⚙)**
 - Click the gear icon at top-right of screen to access:
-  - **Bracket Lines Toggle**: Turn green bracket lines on/off
-  - **Theme Color Picker**: Customize the color of bracket lines and buttons
+  - **Theme Color Picker**: Customize the color of handles and buttons
+  - **Scroll Mode**: Control how the page scrolls while the overlay is active
+    - *Normal*: Browser default scrolling
+    - *Bracket Step*: Each scroll step moves exactly one bracket height (keeps reading position consistent)
+    - *Smooth Controlled*: Slower, more precise scrolling for careful reading
   - **Reset Button**: Restore all default settings
+
+## PDF Support
+
+Focus Reader works with PDFs in several scenarios:
+
+### Embedded PDFs
+PDFs embedded in web pages (via `<iframe>`, `<embed>`, or `<object>`) work automatically.
+
+### Direct PDF Links (e.g., arxiv.org)
+Most web-served PDFs work when the PDF is displayed within a webpage frame.
+
+### PDF.js Extension (Recommended for full support)
+For the best PDF experience, install the [PDF Viewer (PDF.js)](https://chromewebstore.google.com/detail/pdf-viewer/oemmndcbldboiebfnladdacbdfmadadm) extension. When enabled, Focus Reader will work seamlessly on any PDF.
+
+**For local PDFs:**
+1. Install PDF.js extension
+2. Go to `chrome://extensions`, find PDF Viewer
+3. Enable "Allow access to file URLs"
+4. Open local PDF files - Focus Reader will work
+
+### Chrome's Built-in PDF Viewer (Not Supported)
+Chrome's default PDF viewer uses a protected context that doesn't allow extensions to inject content. This is a Chrome security restriction, not a limitation of Focus Reader.
 
 ## Default Settings
 
 - Top offset: 40vh (40% from top of screen)
 - Bracket height: 20vh (20% of screen height)
-- Bracket lines: ON (green lines at left and right edges)
+- Margin shading: Covers left/right page margins
 - Shading color: Black (#000000)
 - Shading opacity: 0.75
-- Theme color: Green (#00ff00)
+- Theme color: Gray (#808080)
 
 ## Troubleshooting
 

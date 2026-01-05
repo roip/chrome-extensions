@@ -10,6 +10,7 @@ let dragStartX = 0;
 let dragStartValue = 0;
 let dragMode = null; // 'move', 'resize', 'width-left', or 'width-right'
 let initializationComplete = false;  // Guard flag to prevent race conditions
+let scrollHandler = null;  // Reference to scroll event handler for cleanup
 
 // Initialize on script load
 initialize();
@@ -172,6 +173,9 @@ async function createOverlay() {
     closeButton,
     settingsButton
   };
+
+  // Setup scroll handling based on user preference
+  setupScrollHandler();
 }
 
 /**
@@ -237,7 +241,7 @@ function createDragHandle(position, offset) {
 }
 
 /**
- * Create a width drag handle (left/right sides) - thin line, hidden by default
+ * Create a width drag handle (left/right sides) - wider hit area with thin visible line
  */
 function createWidthHandle(side, pos) {
   const handle = document.createElement('div');
@@ -246,15 +250,16 @@ function createWidthHandle(side, pos) {
 
   const isLeft = side === 'left';
   const themeColor = currentSettings.bracketColor || '#808080';
-  // Thin line positioned at the edge of the clear area
+  // Wider hit area (16px) with visible line on the inner edge (3px border)
+  // This makes it much easier to grab, especially over PDFs
   handle.style.cssText = `
     position: fixed;
     top: ${pos.clearTop};
     height: ${currentSettings.bracketHeight}vh;
-    ${isLeft ? 'left' : 'right'}: ${isLeft ? pos.leftPos : pos.rightPos};
-    width: 3px;
-    background: ${themeColor};
-    border: none;
+    ${isLeft ? 'left' : 'right'}: calc(${isLeft ? pos.leftPos : pos.rightPos} - 8px);
+    width: 16px;
+    background: transparent;
+    border-${isLeft ? 'right' : 'left'}: 3px solid ${themeColor};
     border-radius: 0;
     z-index: 10001;
     pointer-events: auto;
@@ -412,6 +417,7 @@ function createSettingsPanel() {
     font-size: 14px;
   `;
 
+  const scrollMode = currentSettings.scrollMode || 'normal';
   panel.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
       <div style="font-weight: bold; font-size: 16px;">Settings</div>
@@ -421,6 +427,19 @@ function createSettingsPanel() {
     <div style="margin-bottom: 15px;">
       <label style="display: block; margin-bottom: 5px;">Theme Color</label>
       <input type="color" id="theme-color-picker" value="${themeColor}" style="width: 100%; height: 30px; border: 1px solid ${themeColor}; border-radius: 5px; cursor: pointer;">
+    </div>
+
+    <div style="margin-bottom: 15px;">
+      <label style="display: block; margin-bottom: 5px;">Scroll Mode</label>
+      <select id="scroll-mode-select" style="width: 100%; padding: 6px; background: #222; color: ${themeColor}; border: 1px solid ${themeColor}; border-radius: 5px; cursor: pointer;">
+        <option value="normal" ${scrollMode === 'normal' ? 'selected' : ''}>Normal</option>
+        <option value="bracket-step" ${scrollMode === 'bracket-step' ? 'selected' : ''}>Bracket Step</option>
+        <option value="smooth" ${scrollMode === 'smooth' ? 'selected' : ''}>Smooth Controlled</option>
+      </select>
+      <div style="font-size: 10px; opacity: 0.6; margin-top: 3px;">
+        ${scrollMode === 'bracket-step' ? 'Scrolls exactly one bracket height per step' :
+          scrollMode === 'smooth' ? 'Slower, more controlled scrolling' : 'Browser default scrolling'}
+      </div>
     </div>
 
     <button id="reset-settings-btn" style="
@@ -472,18 +491,33 @@ function createSettingsPanel() {
       }
     });
 
-    // Update left/right handles (thin lines, solid color)
-    [overlays.leftHandle, overlays.rightHandle].forEach(handle => {
-      if (handle) {
-        handle.style.background = newColor;
-      }
-    });
+    // Update left/right handles (border color for the visible line)
+    if (overlays.leftHandle) {
+      overlays.leftHandle.style.borderRightColor = newColor;
+    }
+    if (overlays.rightHandle) {
+      overlays.rightHandle.style.borderLeftColor = newColor;
+    }
   });
 
   document.getElementById('reset-settings-btn').addEventListener('click', async () => {
     currentSettings = await resetSettings();
     updateOverlay();
+    setupScrollHandler();  // Re-setup scroll handler after reset
     panel.remove();
+  });
+
+  document.getElementById('scroll-mode-select').addEventListener('change', async (e) => {
+    const newMode = e.target.value;
+    currentSettings = await saveSettings({ scrollMode: newMode }, true);
+    setupScrollHandler();  // Apply new scroll mode immediately
+
+    // Update the description text
+    const descDiv = e.target.nextElementSibling;
+    if (descDiv) {
+      descDiv.textContent = newMode === 'bracket-step' ? 'Scrolls exactly one bracket height per step' :
+                            newMode === 'smooth' ? 'Slower, more controlled scrolling' : 'Browser default scrolling';
+    }
   });
 }
 
@@ -535,16 +569,16 @@ function updateOverlay() {
     overlays.bottomHandle.style.bottom = `calc(${pos.clearBottom} - 30px)`;
   }
 
-  // Update left/right width handles - thin lines at the edge
+  // Update left/right width handles - wider hit area with offset
   if (overlays.leftHandle) {
     overlays.leftHandle.style.top = pos.clearTop;
     overlays.leftHandle.style.height = bracketHeightVh;
-    overlays.leftHandle.style.left = pos.leftPos;
+    overlays.leftHandle.style.left = `calc(${pos.leftPos} - 8px)`;
   }
   if (overlays.rightHandle) {
     overlays.rightHandle.style.top = pos.clearTop;
     overlays.rightHandle.style.height = bracketHeightVh;
-    overlays.rightHandle.style.right = pos.rightPos;
+    overlays.rightHandle.style.right = `calc(${pos.rightPos} - 8px)`;
   }
 }
 
@@ -557,6 +591,9 @@ function removeOverlay() {
 
   // Remove settings panel if open
   document.getElementById('focus-bracket-settings-panel')?.remove();
+
+  // Remove scroll handler to restore normal scrolling
+  removeScrollHandler();
 }
 
 /**
@@ -577,6 +614,66 @@ async function runAutoDetect() {
       lastDetectedLeft: detected.leftPercent,
       lastDetectedRight: detected.rightPercent
     }, true);
+  }
+}
+
+/**
+ * Setup custom scroll handling based on scroll mode setting
+ * Intercepts wheel events to provide bracket-synced scrolling
+ */
+function setupScrollHandler() {
+  // Remove existing handler if any
+  removeScrollHandler();
+
+  const mode = currentSettings.scrollMode || 'normal';
+  if (mode === 'normal') {
+    return; // Use browser's default scrolling
+  }
+
+  scrollHandler = (e) => {
+    // Only intercept if overlay is active
+    if (!active) return;
+
+    // Don't intercept if user is interacting with overlay controls
+    if (e.target.closest('#focus-bracket-settings-panel') ||
+        e.target.closest('.focus-bracket-handle')) {
+      return;
+    }
+
+    e.preventDefault();
+
+    const direction = e.deltaY > 0 ? 1 : -1;
+
+    if (mode === 'bracket-step') {
+      // Scroll exactly one bracket height per scroll action
+      const bracketHeightPx = (currentSettings.bracketHeight / 100) * window.innerHeight;
+      window.scrollBy({
+        top: direction * bracketHeightPx,
+        behavior: 'smooth'
+      });
+    } else if (mode === 'smooth') {
+      // Slower, more controlled scrolling (1/3 of normal speed)
+      const scrollAmount = Math.abs(e.deltaY) * 0.33;
+      window.scrollBy({
+        top: direction * scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Use passive: false to allow preventDefault
+  window.addEventListener('wheel', scrollHandler, { passive: false });
+  console.log('Focus Reader: Scroll mode enabled:', mode);
+}
+
+/**
+ * Remove scroll handler and restore normal scrolling
+ */
+function removeScrollHandler() {
+  if (scrollHandler) {
+    window.removeEventListener('wheel', scrollHandler);
+    scrollHandler = null;
+    console.log('Focus Reader: Scroll handler removed');
   }
 }
 
@@ -721,7 +818,8 @@ async function loadSettingsModule() {
     bracketWidth: 7,
     autoDetectEnabled: true,
     lastDetectedLeft: null,
-    lastDetectedRight: null
+    lastDetectedRight: null,
+    scrollMode: 'normal'  // 'normal', 'bracket-step', or 'smooth'
   };
 
   window.DEFAULT_SETTINGS = DEFAULT_SETTINGS;

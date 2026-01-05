@@ -6,6 +6,17 @@
  */
 function detectContentBounds() {
   try {
+    // Check for PDF viewers - skip paragraph detection for PDFs
+    const pdfElement = document.querySelector('embed[type="application/pdf"]') ||
+                       document.querySelector('object[type="application/pdf"]') ||
+                       document.querySelector('embed[src*=".pdf"]') ||
+                       document.getElementById('viewerContainer') ||  // PDF.js
+                       document.querySelector('.pdfViewer');          // PDF.js
+    if (pdfElement) {
+      console.log('Auto-detect: PDF detected, using default margins');
+      return null;
+    }
+
     // Query common content containers and paragraphs
     const selectors = [
       'article p',

@@ -2,10 +2,19 @@
 
 // Handle extension icon click - toggle overlay
 chrome.action.onClicked.addListener(async (tab) => {
-  // Check if we can access this tab (not chrome:// or edge:// URLs)
-  if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:'))) {
-    console.log('Cannot inject content script into browser internal pages');
-    return;
+  // Check if we can access this tab
+  if (tab.url) {
+    // Chrome's built-in PDF viewer - cannot inject due to security restrictions
+    if (tab.url.startsWith('chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai')) {
+      console.log('Focus Reader: Chrome PDF viewer detected - cannot inject. Consider using PDF.js extension.');
+      return;
+    }
+
+    // Browser internal pages - cannot inject
+    if (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
+      console.log('Cannot inject content script into browser internal pages');
+      return;
+    }
   }
 
   try {
