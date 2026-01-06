@@ -1,3 +1,6 @@
 # Deployment files (keep local only)
 DEPLOYMENT.md
 deploy-to-windows.sh
+
+# Build artifacts
+*.zip
