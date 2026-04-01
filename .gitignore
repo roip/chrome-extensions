@@ -4,3 +4,7 @@ deploy-to-windows.sh
 
 # Build artifacts
 *.zip
+
+# Dependencies & bundled output
+focus-reader/node_modules/
+focus-reader/dist/
